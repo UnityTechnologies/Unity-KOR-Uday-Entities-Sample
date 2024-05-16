@@ -4,10 +4,7 @@ using UnityEngine;
 
 class BulletAuthoring : MonoBehaviour
 {
-    public GameObject BulletPrefab;
-    public int BulletsPerSpawn;
-    public double TimeBetweenSpawns;
-    public double BulletSpeed;
+    
 }
 
 class BulletAuthoringBaker : Baker<BulletAuthoring>
