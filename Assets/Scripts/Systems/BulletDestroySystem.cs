@@ -1,23 +1,23 @@
 using Unity.Burst;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 using Unity.Transforms;
 
 partial struct BulletDestroySystem : ISystem
 {
-    EntityQuery m_BulletQuery;
+    EntityQuery _bulletQuery;
     
     public void OnCreate(ref SystemState state)
     {
-        m_BulletQuery = state.EntityManager.CreateEntityQuery(typeof(Bullet), typeof(LocalTransform));
+        _bulletQuery = state.EntityManager.CreateEntityQuery(typeof(Bullet), typeof(LocalTransform));
         state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
     }
 
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        // destroy bullets that are out of bounds- absolute x-40, y-40, z-40
-        if (m_BulletQuery.CalculateChunkCount() == 0)
+        if (_bulletQuery.CalculateChunkCount() == 0)
         {
             return;
         }
@@ -25,16 +25,20 @@ partial struct BulletDestroySystem : ISystem
         var commandBufferSystem = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
         var commandBuffer = commandBufferSystem.CreateCommandBuffer(state.WorldUnmanaged);
         
-        var entities = m_BulletQuery.ToEntityArray(Allocator.TempJob);
-        var localTransforms = m_BulletQuery.ToComponentDataArray<LocalTransform>(Allocator.TempJob);
+        var entities = _bulletQuery.ToEntityArray(Allocator.TempJob);
+        var localTransforms = _bulletQuery.ToComponentDataArray<LocalTransform>(Allocator.TempJob);
         
         for (var i = 0; i < entities.Length; i++)
         {
             var localTransform = localTransforms[i];
-            if (localTransform.Position.x < -40 || localTransform.Position.x > 40 ||
-                localTransform.Position.y < -40 || localTransform.Position.y > 40 ||
-                localTransform.Position.z < -40 || localTransform.Position.z > 40)
+            if (math.abs(localTransform.Position.x) >= 40 ||
+                math.abs(localTransform.Position.y) >= 40 ||
+                math.abs(localTransform.Position.z) >= 40)
             {
+                // DestroyEntity() 사용시 해당 엔티티가 즉시 파괴 -> 엔티티 컬렉션을 순회하면서 엔티티 파괴는 불가능
+                // state.EntityManager.DestroyEntity(entities[i]);
+                
+                // CommandBuffer.DestroyEntity()를 사용하면 프레임의 끝으로 미루어 파괴 가능
                 commandBuffer.DestroyEntity(entities[i]);
             }
         }
