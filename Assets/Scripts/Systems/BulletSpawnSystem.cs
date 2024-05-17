@@ -1,4 +1,5 @@
 using Unity.Burst;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 
@@ -22,17 +23,17 @@ partial struct BulletSpawnSystem : ISystem
             return;
         }
         
-        for (var i = 0; i < spawnData.BulletsPerSpawn; i++)
+        NativeArray<Entity> bulletEntities = 
+            state.EntityManager.Instantiate(spawnData.BulletPrefab, spawnData.BulletsPerSpawn, Allocator.Temp);
+
+        foreach (var bulletEntity in bulletEntities)
         {
-            var bulletEntity = state.EntityManager.Instantiate(spawnData.BulletPrefab);
             var velocity = _random.NextFloat3Direction() * spawnData.BulletSpeed;
             var movement = new Movement { Velocity = velocity };
-            
-            state.EntityManager.SetComponentData(bulletEntity, movement);
+            state.EntityManager.SetComponentData(bulletEntity, movement);   
         }
         
         spawnData.NextSpawnTime = SystemAPI.Time.ElapsedTime + spawnData.TimeBetweenSpawns;
         SystemAPI.SetSingleton(spawnData);
-
     }
 }
